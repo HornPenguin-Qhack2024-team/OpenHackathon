@@ -1,0 +1,1 @@
+gcc -shared -o libutilsc.so -W utils.c
