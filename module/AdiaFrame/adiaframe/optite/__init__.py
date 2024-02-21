@@ -26,7 +26,7 @@ class PFrame:
         s_i, sd_i = self.frame[i]
         s_j, sd_j = self.frame[j]
         
-        sd_i_new = fam_code_add()
+        sd_i_new = fam_code_add(sd_i, sd_j)
         self.frame[i] = [s_i, sd_i_new]
     def H(self, i):
         s_i, sd_i = self.frame[i]
