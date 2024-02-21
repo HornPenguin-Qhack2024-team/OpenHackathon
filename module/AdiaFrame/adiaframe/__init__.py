@@ -66,13 +66,52 @@ class Hamiltonian:
         
         edge_df["commute"] = edge_df[["Zs", "Xs", "Zt", "Xt"]].apply(commute_reggio_df, axis=1)
         return edge_df
-    def applying_weight_func(self, weight_func:Callable, columns, name="Weight"):
+    def applying_weight_func(self, weight_func:Callable, columns:Iterable, name="Weight", inplace=False):
+        """Calculate value based on the exist columns, `wieght_func` is a function to calculate the new value based on the exist values.
+        `columns` is a column names or order on internal pandas dataframe. 
+        The result would be saved in `name` column of `.commute_map` Pandas dataframe, if `inplace` is `True` else the result is returned by function. 
+        If there is a column `name` then the column is replaced by the result, or new column is created. 
+        Default value is "Weight".
+
+        Example code:
+
+        .. highlight:: python
+        .. code-block:: python
+            H_example = Hamiltonian(...)
+
+            col_names = ["column1", "column2"]
+            col_name_weight = "result"
+            def weight_func(cols):
+                c1 = cols.iloc[0]
+                c2 = cols.iloc[1]
+                ...
+                return col_value
+                
+            H_example.applying_weight_func(weight_func, col_names, name=col_name_weight, inplace=False)
+
+        Args:
+            weight_func (Callable): _description_
+            columns (_type_): _description_
+            name (str, optional): _description_. Defaults to "Weight".
+            inplace (bool, optional): _description_. Defaults to False.
+
+        Returns:
+            _type_: _description_
+        """
+        if not self.commute_map_exist:
+            self.commute_map = self.get_commuting_map()
         if isinstance(columns[0], str): 
-            self.commute_map[name] = self.commute_map.loc[:, columns].apply(weight_func, axis=1)
+            name_series = self.commute_map.loc[:, columns].apply(weight_func, axis=1)
         elif isinstance(columns[0], int):
-            self.commute_map[name] = self.commute_map.iloc[:, columns].apply(weight_func, axis=1)
-        return self.commute_map[name]
+            name_series = self.commute_map.iloc[:, columns].apply(weight_func, axis=1)
+        
+        if inplace:
+            self.commute_map[name] = name_series
+        else:
+            return name_series
     def save_as(self, filepath:Union[Path, str]): # In progress
+        # Design a data model,
+        # HDF? Pandas dataframe?
         raise NotImplementedError
         if isinstance(filepath, str):
             filepath = Path(filepath)

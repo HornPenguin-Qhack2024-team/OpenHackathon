@@ -10,7 +10,9 @@ def frobenius_inner(A, B): # Frobenius inner product.
     return np.trace((A.conj().T)@B)/(n)
 
 def commute_reggio(pa:Tuple[int, int], pb:Tuple[int, int]):
-    #Reggio et al, Fast Partitioning of Pauli Strings into Commuting Families for Optimal Expectation Value Measurements of Dense Operators, 2023-06-07
+    # Reggio et al, 
+    # Fast Partitioning of Pauli Strings into Commuting Families for Optimal Expectation Value Measurements of Dense Operators, 
+    # 2023-06-07
     nx_a, nz_a = pa
     nx_b, nz_b = pb
     
@@ -60,6 +62,11 @@ def get_coef_bin(x_int:int, z_int:int, n:str):
     return 1j**y_pos.count("1"), "".join(g_str)
 
 # Bit operators=========================================
+# Python standard routines are well optimized 
+# It is no worth to use bit optmization
+# Just remained as example of further implementation on compile language
+# such as C. 
+# ------------------------------------------------------
 # pauli coef calculation
 def pauli_xz_product_coef(x_int, z_int):
     return 1j**(bit_count(x_int&z_int))
@@ -71,7 +78,7 @@ def bit_count(n:int):
         num+=1
     return num
 
-# Calculate string from ints
+# Calculate string from integers
 int_pchar = ["I", "Z", "X", "Y"]
 def pstr_from_xz(x_int, z_int):
     z_modi = insert_zeros_in_gaps(z_int)
@@ -80,7 +87,7 @@ def pstr_from_xz(x_int, z_int):
 
     p_int = x_modi + z_modi 
     # In binary representation: (00)(10)(10)(11) form
-    # 00:I, 10: X 01: Z, 11: Y
+    # 00:I, 10: X, 01: Z, 11: Y
 
     # Get length of str
     len_p = 0
