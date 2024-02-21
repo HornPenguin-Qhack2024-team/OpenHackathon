@@ -23,13 +23,10 @@ import pandas as pd
 
 from adiaframe.utils import (
     commute_reggio_df, integer_order_map, 
-    frobenius_inner, krons, get_coef)
+    frobenius_inner, krons, get_coef,
+    get_decomposition,
+    pauli_X, pauli_Y, pauli_Z, I)
 
-I = np.eye(2)
-pauli_X = np.array([[0, 1], [1, 0]], dtype=complex)
-pauli_Y = complex(0, 1)*np.array([[0, -1], [1, 0]], dtype=complex)
-pauli_Z = np.array([[1, 0], [0, -1]], dtype=complex)
-p_basis = {"I":I, "X":pauli_X, "Y":pauli_Y, "Z":pauli_Z}
 
 class Hamiltonian:
     def __init__(self, 
@@ -48,7 +45,7 @@ class Hamiltonian:
         if pauli_basis is None:
             pauli_basis = self.H_to_p_poly(H, tols[1])
         # None or Dataframe
-        self.local_decomposition = self.get_decomposition(pauli_basis)  
+        self.local_decomposition = get_decomposition(pauli_basis)  
 
         # Commute term
         self.commute_map = self.get_commuting_map() if commute_map else None
@@ -64,19 +61,59 @@ class Hamiltonian:
         edge_df = edge_df.merge(df[["Pstring", "Z", "X"]], how="left", left_on="target", right_on='Pstring').drop("Pstring", axis=1)
         edge_df.rename(columns={"Z": "Zt", "X": "Xt"}, inplace=True)
         
-        edge_df["commute"] = edge_df[["Zs", "Xs", "Zt", "Xt"]].apply(commute_reggio_df, axis=1)
+        edge_df["commute"] = edge_df[["Zs", "Xs", "Zt", "Xt"]].apply(lambda x: int(commute_reggio_df(x)), axis=1)
         return edge_df
-    def applying_weight_func(self, weight_func:Callable, columns, name="Weight"):
+    def applying_weight_func(self, weight_func:Callable, columns:Iterable, name="Weight", inplace=False):
+        """Calculate value based on the exist columns, `wieght_func` is a function to calculate the new value based on the exist values.
+        `columns` is a column names or order on internal pandas dataframe. 
+        The result would be saved in `name` column of `.commute_map` Pandas dataframe, if `inplace` is `True` else the result is returned by function. 
+        If there is a column `name` then the column is replaced by the result, or new column is created. 
+        Default value is "Weight".
+
+        Example code:
+
+        .. highlight:: python
+        .. code-block:: python
+            H_example = Hamiltonian(...)
+
+            col_names = ["column1", "column2"]
+            col_name_weight = "result"
+            def weight_func(cols):
+                c1 = cols.iloc[0]
+                c2 = cols.iloc[1]
+                ...
+                return col_value
+                
+            H_example.applying_weight_func(weight_func, col_names, name=col_name_weight, inplace=False)
+
+        Args:
+            weight_func (Callable): _description_
+            columns (_type_): _description_
+            name (str, optional): _description_. Defaults to "Weight".
+            inplace (bool, optional): _description_. Defaults to False.
+
+        Returns:
+            _type_: _description_
+        """
+        if not self.commute_map_exist:
+            self.commute_map = self.get_commuting_map()
         if isinstance(columns[0], str): 
-            self.commute_map[name] = self.commute_map.loc[:, columns].apply(weight_func, axis=1)
+            name_series = self.commute_map.loc[:, columns].apply(weight_func, axis=1)
         elif isinstance(columns[0], int):
-            self.commute_map[name] = self.commute_map.iloc[:, columns].apply(weight_func, axis=1)
-        return self.commute_map[name]
+            name_series = self.commute_map.iloc[:, columns].apply(weight_func, axis=1)
+        
+        if inplace:
+            self.commute_map[name] = name_series
+        else:
+            return name_series
     def save_as(self, filepath:Union[Path, str]): # In progress
+        # Design a data model,
+        # HDF? Pandas dataframe?
         raise NotImplementedError
         if isinstance(filepath, str):
             filepath = Path(filepath)
         pass
+    
     #--------------------------------------------------------------
     @property
     def pauli_decomposition(self):
@@ -87,6 +124,11 @@ class Hamiltonian:
     @property
     def latin_matrix(self):
         return self.local_decomposition.pivot(index="X", columns="Z", values="Coef") 
+    @property
+    def graph_edge(self):
+        assert self.commute_map_exist, "No commute map exist. Execute <Hamiltonain>.get_commuting_map()."
+        return self.commute_map[self.commute_map["source"] != self.qubit_num*("I")]
+        
     #--------------------------------------------------------------
     @classmethod
     def from_latin_matrix(cls:Hamiltonian, 
@@ -111,72 +153,6 @@ class Hamiltonian:
         pass
     #------------------------------
     # Basic utils for hamiltonian analysis
-    @staticmethod
-    def get_decomposition(pauli_basis):
-        p_dict = {}
-        for p in pauli_basis.keys():
-            nx, nz = Hamiltonian.pstr_to_xz_fam_code(p)
-            num = 1 if nx>0 else 0
-            num += num if nz>0 else 0
-
-            p_dict[p] = (num, nz, nx, pauli_basis[p])
-        df = pd.DataFrame.from_dict(
-                                    p_dict, 
-                                    orient="index",
-                                    columns = ["type", "Z", "X", "Coef"])
-        df.reset_index(inplace=True, names="Pstring")
-        return df
-    @staticmethod
-    def pstr_to_matrix(pstr):
-        result = []
-        for p in pstr:
-            result.append(p_basis[p])
-        return krons(result)
-    @staticmethod
-    def pstr_to_xz_fam_code(pstr:str)->Tuple[int, int]:
-        num = 1
-        x_num = 0 # Consider a bit represenation
-        z_num = 0
-
-        p_map = {"I":(0,0), "X":(1, 0), "Y":(1,1), "Z":(0,1)}
-        for p in reversed(pstr):
-            nx, nz = p_map[p]
-            x_num += nx*num
-            z_num += nz*num
-            num += num
-        return x_num, z_num
-    @staticmethod
-    def xz_fam_code_to_pstr(ns:Tuple[int, int], l:int):
-        assert l>0, "l must be positive integer and greater than 0."
-        nx, nz = ns
-        max_int_1 = 2**l
-        assert (nx < max_int_1 and nz < max_int_1), "The given integers and the qubit dim are not matched."
-        if nx==0:
-            st = format(nz, f"0{l}b")
-            st = st.replace("0", "I")
-            st = st.replace("1", "Z")
-            return st
-        if nz==0:
-            st = format(nx, f"0{l}b")
-            st = st.replace("0", "I")
-            st = st.replace("1", "X")
-            return st
-        
-        st_x = format(nx, f"0{l}b")
-        st_z = format(nz, f"0{l}b")
-
-        result = []
-        for x, z in zip(st_x, st_z):
-            if x == z:
-                if x =="1":
-                    result.append("Y")
-                else: 
-                    result.append("I")
-            elif x > z:
-                result.append("X")
-            else:
-                result.append("Z")
-        return "".join(result)
     @staticmethod
     def p_poly_to_H(p_poly:dict):
         """Convert pauli-polynomial of dictionary form to total Hamiltonian matrix.
