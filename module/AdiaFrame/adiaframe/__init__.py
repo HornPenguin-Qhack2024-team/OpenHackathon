@@ -25,6 +25,7 @@ from adiaframe.utils import (
     commute_reggio_df, integer_order_map, 
     frobenius_inner, krons, get_coef,
     get_decomposition, pstr_to_matrix,
+    pstr_to_xz_fam_code,
     pauli_X, pauli_Y, pauli_Z, I)
 
 
@@ -188,7 +189,7 @@ class Hamiltonian:
         x_fam = []
         z_fam = []
         for p in p_terms:
-            nx, nz = Hamiltonian.pstr_to_xz_fam_code(p)
+            nx, nz = pstr_to_xz_fam_code(p)
             x_fam.append(nx)
             z_fam.append(nz)
             

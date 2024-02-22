@@ -27,7 +27,7 @@ def get_decomposition(pauli_basis:dict)->pd.DataFrame:
     """
     p_dict = {}
     for p in pauli_basis.keys():
-        nx, nz = Hamiltonian.pstr_to_xz_fam_code(p)
+        nx, nz = pstr_to_xz_fam_code(p)
         num = 1 if nx>0 else 0
         num += num if nz>0 else 0
         p_dict[p] = (num, nz, nx, pauli_basis[p])
