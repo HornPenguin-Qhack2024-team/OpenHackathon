@@ -302,3 +302,63 @@ def get_basis_weight(s):
     for s_i, t_i in zip(s_str, t_str):
         w+= _k_weight[s_i][t_i]
     return w/len(s_str)
+
+
+# Trotter circuit construction
+import pennylane as qml
+# Just basic Trotterization
+def evolve_circuit(pstr, on_wire:int, 
+                   coeff:float, t:float, imaginary=False):
+    """Return P evolution of exp(-i *t * coeff * P) or exp(- t * coeff*P)
+    if `imaginary` is `True`.
+
+    Args:
+        pstr (_type_): Pauli string
+        on_wire (int): Position of rotation gate
+        coeff (float): Coefficient of Pauli term
+        t (float): time
+        imaginary (bool, optional): Evolution type REAL or IMAGINARY. Defaults to False.
+    """
+    act_wires=[]
+    #basis_transform
+    for i, s in enumerate(pstr):
+        if s == "I":
+            continue
+        else: 
+            act_wires.append(i)
+            if s=="X":
+                qml.Hadamard(wires=i)
+            elif s=="Y":
+                qml.adjoint(qml.S(wires=i))
+                qml.Hadamard(wires=i)
+    
+    # CNOT
+    for ai in act_wires:
+        if on_wire == ai:
+            continue
+        qml.CNOT(wires=[ai, on_wire])
+    if imaginary:
+        dtau = t
+        gamma = coeff
+        phi = 2*np.arccos(np.exp(-2*gamma*dtau))
+        qml.ctrl(qml.RX, on_wire)(phi, wires=len(pstr))
+    else:
+        phi = coeff * t
+        qml.RZ(phi, wires=on_wire, id=pstr)
+    
+    # CNOT
+    for ai in reversed(act_wires):
+        if on_wire == ai:
+            continue
+        qml.CNOT(wires=[ai, on_wire])
+    # Reverse
+    for i, s in enumerate(pstr):
+        if s == "I" or s=="Z":
+            continue
+        elif s=="X":
+            qml.Hadamard(wires=i)
+        elif s=="Y":
+            qml.Hadamard(wires=i)
+            qml.S(wires=i)
+            
+    
