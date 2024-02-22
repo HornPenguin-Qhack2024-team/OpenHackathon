@@ -335,13 +335,15 @@ def evolve_circuit(pstr, on_wire:int,
                 qml.Hadamard(wires=i)
     
     # CNOT
+    if on_wire not in act_wires:
+        on_wire = act_wires[0]
     for ai in act_wires:
         if on_wire == ai:
             continue
         qml.CNOT(wires=[ai, on_wire])
     if imaginary:
         dtau = t
-        gamma = np.abs(coeff)
+        gamma = np.abs(coeff) # pure complex number 
         phi = 2*np.arccos(np.exp(-2*gamma*dtau))
         qml.ctrl(qml.RX, on_wire)(phi, wires=len(pstr))
 
@@ -363,8 +365,6 @@ def evolve_circuit(pstr, on_wire:int,
         elif s=="Y":
             qml.Hadamard(wires=i)
             qml.S(wires=i)
-
-    return 0 if not imaginary else qml.measure(qml.PauliZ(len(pstr)))
 
             
     
