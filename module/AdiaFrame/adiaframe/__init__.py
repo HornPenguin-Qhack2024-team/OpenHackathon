@@ -24,7 +24,7 @@ import pandas as pd
 from adiaframe.utils import (
     commute_reggio_df, integer_order_map, 
     frobenius_inner, krons, get_coef,
-    get_decomposition,
+    get_decomposition, pstr_to_matrix,
     pauli_X, pauli_Y, pauli_Z, I)
 
 
@@ -37,7 +37,7 @@ class Hamiltonian:
         assert len(H.shape) ==2, f"H must be 2dim matrix. current: {H.shape}."
         n1, n2 = H.shape
         assert n1 == n2, f"Hamiltonian must be square matrix. Current:{(n1, n2)}."
-        assert np.allclose(H, H.H, *tols), f"Hamiltonian must be a hermite matrix. Relative, absolute tolerance, {tols}."
+        assert np.allclose(H, H.getH(), *tols), f"Hamiltonian must be a hermite matrix. Relative, absolute tolerance, {tols}."
         assert bin(n1)[2:].count("1") == 1, f"Dimension must be a 2^n. Current:{n1}."
         
         self.Hamiltonian = H
@@ -141,7 +141,7 @@ class Hamiltonian:
                                p_coef:Union[None, np.ndarray]=None,
                                *args)-> Hamiltonian:
         if isinstance(p_poly, dict):
-            H = Hamiltonian.pstr_to_matrix(p_poly)
+            H = pstr_to_matrix(p_poly)
         else:
             p_dict = {}
             for p, coef in zip(p_poly, p_coef):
@@ -167,7 +167,7 @@ class Hamiltonian:
         result = np.asmatrix(np.zeros(shape, dtype=complex))
         for pstr in p_poly:
             coef = p_poly[pstr]
-            result += coef*Hamiltonian.pstr_to_matrix(pstr)
+            result += coef*pstr_to_matrix(pstr)
         return result
     @staticmethod
     def H_to_p_poly(H, tol=float_tol, include_zeros=False):
