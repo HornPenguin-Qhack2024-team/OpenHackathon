@@ -307,8 +307,10 @@ def get_basis_weight(s):
 # Trotter circuit construction
 import pennylane as qml
 # Just basic Trotterization
+# Just basic Trotterization
 def evolve_circuit(pstr, on_wire:int, 
-                   coeff:float, t:float, imaginary=False):
+                   coeff:float, t:float, 
+                   imaginary=False):
     """Return P evolution of exp(-i *t * coeff * P) or exp(- t * coeff*P)
     if `imaginary` is `True`.
 
@@ -339,9 +341,10 @@ def evolve_circuit(pstr, on_wire:int,
         qml.CNOT(wires=[ai, on_wire])
     if imaginary:
         dtau = t
-        gamma = coeff
+        gamma = np.abs(coeff)
         phi = 2*np.arccos(np.exp(-2*gamma*dtau))
         qml.ctrl(qml.RX, on_wire)(phi, wires=len(pstr))
+
     else:
         phi = coeff * t
         qml.RZ(phi, wires=on_wire, id=pstr)
@@ -360,5 +363,8 @@ def evolve_circuit(pstr, on_wire:int,
         elif s=="Y":
             qml.Hadamard(wires=i)
             qml.S(wires=i)
+
+    return 0 if not imaginary else qml.measure(qml.PauliZ(len(pstr)))
+
             
     
