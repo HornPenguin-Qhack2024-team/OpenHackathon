@@ -36,6 +36,7 @@ def get_decomposition(pauli_basis:dict)->pd.DataFrame:
                                 orient="index",
                                 columns = ["type", "Z", "X", "Coef"])
     df.reset_index(inplace=True, names="Pstring")
+    df["Coef"] = df["Coef"].astype(float)
     return df
 
 def pstr_to_matrix(pstr:str)->np.ndarray:

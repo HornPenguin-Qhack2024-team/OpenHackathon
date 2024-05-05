@@ -1,7 +1,4 @@
 
-
-
-
 ## XZ family code representation of Pauli term.
 
 
@@ -41,7 +38,7 @@ of two coordinate.
 ```
 p1 = [n1x, n1z]
 p2 = [n2x, n2z]
-p3 = [n3x, n3z] = p1 + p2 = [n1z^n2z, n1x^n2x],
+p3 = [n3x, n3z] = p1 + p2 = [n1x^n2x, n1z^n2z],
 ```
 
 ### Commutation
